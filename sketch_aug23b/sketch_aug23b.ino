@@ -3,32 +3,33 @@
 #include <WebServer.h>
 
 // Replace with your WiFi credentials
-const char* ssid = "MTN-5G-4ACC15";
-const char* password = "JESU1213";
+const char *ssid = "NETWORK";
+const char *password = "PASSWORD";
 
 WebServer server(80);
 
 // Camera pins for AI Thinker ESP32-CAM
-#define PWDN_GPIO_NUM     32
-#define RESET_GPIO_NUM    -1
-#define XCLK_GPIO_NUM      0
-#define SIOD_GPIO_NUM     26
-#define SIOC_GPIO_NUM     27
-#define Y9_GPIO_NUM       35
-#define Y8_GPIO_NUM       34
-#define Y7_GPIO_NUM       39
-#define Y6_GPIO_NUM       36
-#define Y5_GPIO_NUM       21
-#define Y4_GPIO_NUM       19
-#define Y3_GPIO_NUM       18
-#define Y2_GPIO_NUM        5
-#define VSYNC_GPIO_NUM    25
-#define HREF_GPIO_NUM     23
-#define PCLK_GPIO_NUM     22
+#define PWDN_GPIO_NUM 32
+#define RESET_GPIO_NUM -1
+#define XCLK_GPIO_NUM 0
+#define SIOD_GPIO_NUM 26
+#define SIOC_GPIO_NUM 27
+#define Y9_GPIO_NUM 35
+#define Y8_GPIO_NUM 34
+#define Y7_GPIO_NUM 39
+#define Y6_GPIO_NUM 36
+#define Y5_GPIO_NUM 21
+#define Y4_GPIO_NUM 19
+#define Y3_GPIO_NUM 18
+#define Y2_GPIO_NUM 5
+#define VSYNC_GPIO_NUM 25
+#define HREF_GPIO_NUM 23
+#define PCLK_GPIO_NUM 22
 
-void setup() {
+void setup()
+{
   Serial.begin(115200);
-  
+
   // Camera config
   camera_config_t config;
   config.ledc_channel = LEDC_CHANNEL_0;
@@ -54,33 +55,36 @@ void setup() {
   config.frame_size = FRAMESIZE_SVGA;
   config.jpeg_quality = 15;
   config.fb_count = 1;
-  
+
   // Initialize camera
   esp_err_t err = esp_camera_init(&config);
-  if (err != ESP_OK) {
+  if (err != ESP_OK)
+  {
     Serial.printf("Camera init failed: 0x%x", err);
     return;
   }
-  
+
   // Connect to WiFi
   WiFi.begin(ssid, password);
-  while (WiFi.status() != WL_CONNECTED) {
+  while (WiFi.status() != WL_CONNECTED)
+  {
     delay(1000);
     Serial.print(".");
   }
   Serial.println("\nWiFi connected!");
   Serial.print("ESPC IP: ");
   Serial.println(WiFi.localIP());
-  
-  server.on("/status", [](){ 
+
+  server.on("/status", []()
+            { 
     String status = "ESP32-CAM Status:\n";
     status += "Free heap: " + String(ESP.getFreeHeap()) + " bytes\n";
     status += "WiFi RSSI: " + String(WiFi.RSSI()) + " dBm\n";
     status += "IP: " + WiFi.localIP().toString() + "\n";
-    server.send(200, "text/plain", status);
-  });
+    server.send(200, "text/plain", status); });
 
-  server.on("/ready", [](){
+  server.on("/ready", []()
+            {
   Serial.println("Ready check requested");
   
   // Check if camera is initialized
@@ -118,11 +122,11 @@ void setup() {
   response += "Buffers cleared: " + String(bufferCleared ? "Yes" : "No") + "\n";
   
   server.send(200, "text/plain", response);
-  Serial.println("Camera is ready for capture");
-});
+  Serial.println("Camera is ready for capture"); });
 
   // Simple route to capture image
-  server.on("/capture", [](){
+  server.on("/capture", []()
+            {
     camera_fb_t * fb = esp_camera_fb_get();
     if (!fb) {
       server.send(500, "text/plain", "Camera failed");
@@ -133,13 +137,13 @@ void setup() {
     server.send_P(200, "image/jpeg", (const char *)fb->buf, fb->len);
     esp_camera_fb_return(fb);
     
-    Serial.println("Image captured and sent");
-  });
-  
+    Serial.println("Image captured and sent"); });
+
   server.begin();
   Serial.println("Camera server started");
 }
 
-void loop() {
+void loop()
+{
   server.handleClient();
 }

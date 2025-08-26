@@ -3,30 +3,32 @@
 #include <HTTPClient.h>
 
 // Replace with your WiFi credentials
-const char* ssid = "MTN-5G-4ACC15";
-const char* password = "JESU1213";
-
+const char *ssid = "NETWORK";
+const char *password = "PASSWORD";
 
 // ESPC IP address (check serial monitor of ESPC for actual IP)
-const char* espc_ip = "http://192.168.0.134/capture"; // Update this after ESPC connects
+const char *espc_ip = "http://192.168.0.134/capture"; // Update this after ESPC connects
 
 WebServer server(80);
 
-void setup() {
+void setup()
+{
   Serial.begin(115200);
   Serial.print("Started...");
   // Connect to WiFi
   WiFi.begin(ssid, password);
-  while (WiFi.status() != WL_CONNECTED) {
+  while (WiFi.status() != WL_CONNECTED)
+  {
     delay(1000);
     Serial.print(".");
   }
   Serial.println("\nWiFi connected!");
   Serial.print("ESPM IP: ");
   Serial.println(WiFi.localIP());
-  
+
   // Main web page
-  server.on("/", [](){
+  server.on("/", []()
+            {
     String html = R"(
 <!DOCTYPE html>
 <html>
@@ -83,11 +85,11 @@ void setup() {
 </body>
 </html>
 )";
-    server.send(200, "text/html", html);
-  });
-  
+    server.send(200, "text/html", html); });
+
   // Capture endpoint - gets image from ESPC
-  server.on("/capture", [](){
+  server.on("/capture", []()
+            {
     HTTPClient http;
     http.begin(String(espc_ip));
     
@@ -100,14 +102,14 @@ void setup() {
       server.send(500, "text/plain", "Failed to get image from camera");
       Serial.println("Failed to connect to ESPC");
     }
-    http.end();
-  });
-  
+    http.end(); });
+
   server.begin();
   Serial.println("Main web server started");
   Serial.println("Open browser and go to: http://" + WiFi.localIP().toString());
 }
 
-void loop() {
+void loop()
+{
   server.handleClient();
 }
