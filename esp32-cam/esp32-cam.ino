@@ -6,8 +6,8 @@
 #include "soc/rtc_cntl_reg.h"
 
 // Replace with your WiFi credentials
-const char *ssid = "SSID";
-const char *password = "PASSWORD";
+const char* ssid = "MTN-5G-4ACC15";
+const char* password = "JESU1213";
 
 // Upload server configuration
 const char *uploadHost = "storex-production-f286.up.railway.app";
@@ -35,10 +35,14 @@ WebServer server(80);
 #define HREF_GPIO_NUM 23
 #define PCLK_GPIO_NUM 22
 
+#define FLASH_LED_PIN 4
+
 void setup()
 {
   WRITE_PERI_REG(RTC_CNTL_BROWN_OUT_REG, 0); // Disable brown-out detector
   Serial.begin(115200);
+
+  pinMode(FLASH_LED_PIN, OUTPUT);
 
   // Camera config
   camera_config_t config;
@@ -63,7 +67,7 @@ void setup()
   config.xclk_freq_hz = 20000000;
   config.pixel_format = PIXFORMAT_JPEG;
   config.frame_size = FRAMESIZE_CIF;
-  config.jpeg_quality = 20;
+  config.jpeg_quality = 15;
   config.fb_count = 1;
   Serial.println("No PSRAM - using standard settings");
 
@@ -88,27 +92,18 @@ void setup()
   Serial.println(WiFi.localIP());
   Serial.println("Open browser and go to: http://" + WiFi.localIP().toString() + "/capture-and-upload");
 
-  server.on("/status", []()
-            { 
-    String status = "ESP32-CAM Status:\n";
-    status += "Free heap: " + String(ESP.getFreeHeap()) + " bytes\n";
-    status += "WiFi RSSI: " + String(WiFi.RSSI()) + " dBm\n";
-    status += "IP: " + WiFi.localIP().toString() + "\n";
-    status += "PSRAM: " + String(psramFound() ? "Found" : "Not found") + "\n";
-    server.send(200, "text/plain", status); });
-
-  server.on("/ready", []()
+server.on("/ready", []()
             {
     Serial.println("Ready check requested");
-    
+
     // Check if camera is initialized
     sensor_t * s = esp_camera_sensor_get();
     if (s == NULL) {
-      server.send(503, "text/plain", "Camera not initialized");
+      server.send(200, "text/html", "ERROR");
       Serial.println("Camera not ready - not initialized");
       return;
     }
-    
+
     // Clear buffers to ensure freshness
     bool bufferCleared = false;
     for (int i = 0; i < 2; i++) {
@@ -119,59 +114,56 @@ void setup()
       }
       delay(5);
     }
-    
+
     // Test capture to verify camera is working
     camera_fb_t * testFb = esp_camera_fb_get();
     if (!testFb) {
-      server.send(503, "text/plain", "Camera not responding");
+      server.send(200, "text/plain", "ERROR");
       Serial.println("Camera not ready - test capture failed");
       return;
     }
-    
+
     // Return test frame and confirm ready
     esp_camera_fb_return(testFb);
-    
+
     String response = "Camera ready\n";
     response += "Free heap: " + String(ESP.getFreeHeap()) + " bytes\n";
     response += "Buffers cleared: " + String(bufferCleared ? "Yes" : "No") + "\n";
-    
+
     server.send(200, "text/plain", response);
+    server.client().flush();
     Serial.println("Camera is ready for capture"); });
 
-  // Simple route to capture image
-  server.on("/capture", []()
-            {
-    camera_fb_t * fb = esp_camera_fb_get();
-    if (!fb) {
-      server.send(500, "text/plain", "Camera failed");
-      return;
-    }
-    
-    server.sendHeader("Access-Control-Allow-Origin", "*");
-    server.send_P(200, "image/jpeg", (const char *)fb->buf, fb->len);
-    esp_camera_fb_return(fb);
-    
-    Serial.println("Image captured and sent"); });
-
-  // Optimized capture and upload endpoint
   server.on("/capture-and-upload", []()
-            {
+  {
+    turnOnFlash();
+    delay(6000);
     // Capture image
     camera_fb_t * fb = esp_camera_fb_get();
     if (!fb) {
-      server.send(500, "application/json", "{\"error\":\"Camera capture failed\"}");
+      server.sendHeader("Access-Control-Allow-Origin", "*");
+      server.send(200, "text/plain", "ERROR");
       Serial.println("Camera capture failed");
+      turnOffFlash();
       return;
     }
     
     Serial.printf("Image captured: %d bytes\n", fb->len);
-    
+        turnOffFlash();
     // Upload using optimized chunked method
     String result = uploadImageChunked(fb);
     esp_camera_fb_return(fb);
-      server.sendHeader("Access-Control-Allow-Origin", "*");
-      server.send(200, "application/json", result);
-      Serial.println("Upload successful"); });
+    
+    server.sendHeader("Access-Control-Allow-Origin", "*");
+    if (result == "ERROR" || result.length() == 0) {
+      server.send(200, "text/plain", "ERROR");
+      Serial.println("Upload failed");
+    } else {
+      server.send(200, "text/html", result); // Returns the download URL
+      Serial.println("Upload successful");
+    }
+    server.client().flush();
+  });
 
   server.begin();
   Serial.println("Camera server started");
@@ -302,5 +294,32 @@ String uploadImageChunked(camera_fb_t *fb)
 void loop()
 {
   server.handleClient();
-  yield(); // Allow other tasks to run
+  
+  // Memory monitoring (every 60 seconds)
+  static unsigned long lastMemCheck = 0;
+  if (millis() - lastMemCheck > 60000) {
+    uint32_t freeHeap = ESP.getFreeHeap();
+    if (freeHeap < 10000) { // Less than 10KB free
+      Serial.printf("WARNING: Low memory - %d bytes free\n", freeHeap);
+    }
+    lastMemCheck = millis();
+  }
+  
+  // WiFi check (every 30 seconds)
+  static unsigned long lastWiFiCheck = 0;
+  if (millis() - lastWiFiCheck > 30000) {
+    if (WiFi.status() != WL_CONNECTED) {
+      Serial.println("WiFi disconnected - reconnecting...");
+      WiFi.reconnect();
+    }
+    lastWiFiCheck = millis();
+  }
+}
+
+void turnOnFlash() {
+  digitalWrite(FLASH_LED_PIN, HIGH);
+}
+
+void turnOffFlash() {
+  digitalWrite(FLASH_LED_PIN, LOW);
 }
