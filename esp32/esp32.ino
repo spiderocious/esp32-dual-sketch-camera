@@ -3,7 +3,7 @@
 #include <HTTPClient.h>
 
 // Replace with your WiFi credentials
-const char *ssid = "NETWORK";
+const char *ssid = "SSID";
 const char *password = "PASSWORD";
 
 // ESPC IP address (check serial monitor of ESPC for actual IP)
@@ -90,6 +90,7 @@ void setup()
   // Capture endpoint - gets image from ESPC
   server.on("/capture", []()
             {
+      
     HTTPClient http;
     http.begin(String(espc_ip));
     
