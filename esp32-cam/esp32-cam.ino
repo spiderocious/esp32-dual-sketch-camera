@@ -6,8 +6,8 @@
 #include "soc/rtc_cntl_reg.h"
 
 // Replace with your WiFi credentials
-const char *ssid = "MTN-5G-4ACC15";
-const char *password = "JESU1213";
+const char *ssid = "SSID";
+const char *password = "PASSWORD";
 
 // Upload server configuration
 const char *uploadHost = "storex-production-f286.up.railway.app";
