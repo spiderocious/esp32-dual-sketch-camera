@@ -41,7 +41,7 @@ const char *ready_cam = "http://192.168.0.134/ready";
 const char *ssid = "MTN-5G-4ACC15";
 const char *password = "JESU1213";
 
-const char *analysis_submission = "https://dundie-backend-production.up.railway.app/submit-analysis/short?imageUrl=";
+const char *analysis_submission = "https://dundie-backend-production.up.railway.app/submit-analysis/short";
 const char *result_api = "https://dundie-backend-production.up.railway.app/analysis/short/";
 
 void setup()
@@ -153,28 +153,31 @@ void runTest(){
       lcd.setCursor(0, 0);
       lcd.print("Insert your nail");
       lcd.setCursor(0,1);
-      lcd.print(" Press A to start!")
+      lcd.print(" Press A to start!");
       char start = waitForKeypress("A");
       if(start == 'A'){
         lcd.clear();
         lcd.setCursor(0, 0);
         lcd.print("Capturing...");
         lcd.setCursor(0,1);
-        lcd.print(" Please wait!")
+        lcd.print(" Please wait!");
         String checkEspCam = fetch(ready_cam);
-        lcd.clear();
+        
         if(checkEspCam == "ERROR"){
+          lcd.clear();
           displayText("Camera unresponsive");
         }
         else {
           delay(2000);
           String imageUrl = fetch(espc_ip);
           if(imageUrl == "ERROR"){
+            lcd.clear();
             displayText("Image Capture Failed");
           }
           else {
-            String code = fetch(analysis_submission + imageUrl);
+            String code = submitFileUrl(imageUrl);
             if(code == "ERROR"){
+              lcd.clear();
               displayText("Submit Failed");
             }
             else {
@@ -300,6 +303,33 @@ void testAllKeys()
 
     delay(10);
   }
+}
+
+String submitFileUrl(String url) {
+  HTTPClient http;
+  http.begin(analysis_submission); 
+  http.setTimeout(120000);
+  
+  Serial.println("Making POST API call");
+  Serial.println("URL: " + url);
+  
+  // Create JSON payload
+  String payload = "{\"imageUrl\":\"" + url + "\"}";
+  Serial.println("Payload: " + payload);
+  
+  int httpCode = http.POST(payload);
+  String response = "";
+  Serial.println("HTTP Code: " + String(httpCode));
+  
+  if (httpCode == 200) {
+    response = http.getString();
+  } else {
+    response = "ERROR";
+  }
+  
+  http.end();
+  Serial.println("Response: " + response);
+  return response;
 }
 
 String fetch(String url) {

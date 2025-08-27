@@ -67,7 +67,7 @@ void setup()
   config.xclk_freq_hz = 20000000;
   config.pixel_format = PIXFORMAT_JPEG;
   config.frame_size = FRAMESIZE_CIF;
-  config.jpeg_quality = 15;
+  config.jpeg_quality = 20;
   config.fb_count = 1;
   Serial.println("No PSRAM - using standard settings");
 
