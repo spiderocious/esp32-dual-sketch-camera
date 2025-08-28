@@ -193,14 +193,14 @@ void runTest(){
 void getAnalysisResult(String code){
   lcd.clear();
   lcd.setCursor(0, 0);
-  lcd.print("Loading, pls wait.");
+  lcd.print("Loading pls wait.");
   lcd.setCursor(0, 1);
   lcd.print(code);
 
   String result = getResult(code);
   lcd.clear();
   if(result == "ERROR"){
-    displayText("Could not get your result");
+    displayText("NO ANALYSIS");
   }else {
     delay(3500);
     lcd.clear();
