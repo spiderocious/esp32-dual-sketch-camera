@@ -48,7 +48,6 @@ void setup()
 {
   Serial.begin(115200);
   delay(1000);
-  blinkLED(2, 50);
 
   // Initialize LCD
   Wire.begin();
@@ -148,7 +147,6 @@ void runTest(){
       displayText("Camera unresponsive");
     }
     else {
-      displayText("Please insert your nail for picture \n press A to start!");
       lcd.clear();
       lcd.setCursor(0, 0);
       lcd.print("Insert your nail");
@@ -195,7 +193,7 @@ void runTest(){
 void getAnalysisResult(String code){
   lcd.clear();
   lcd.setCursor(0, 0);
-  lcd.print("Getting result, please wait.");
+  lcd.print("Loading, pls wait.");
   lcd.setCursor(0, 1);
   lcd.print(code);
 
@@ -204,13 +202,20 @@ void getAnalysisResult(String code){
   if(result == "ERROR"){
     displayText("Could not get your result");
   }else {
+    delay(3500);
     lcd.clear();
     lcd.setCursor(0, 0);
     lcd.print("Result READY");
     lcd.setCursor(0, 1);
     lcd.print(" " + code);
     delay(2000);
-    displayText(result);
+    lcd.clear();
+    lcd.setCursor(0, 0);
+    lcd.print("Hb level:");
+    lcd.setCursor(0, 1);
+    lcd.print("                "); // Clear entire line with spaces
+    lcd.setCursor(0, 1);
+    lcd.print(result);
   }
 }
 
@@ -309,9 +314,9 @@ String submitFileUrl(String url) {
   HTTPClient http;
   http.begin(analysis_submission); 
   http.setTimeout(120000);
-  
+  http.addHeader("Content-Type", "application/json");
   Serial.println("Making POST API call");
-  Serial.println("URL: " + url);
+  Serial.println("URL: " + String(analysis_submission));
   
   // Create JSON payload
   String payload = "{\"imageUrl\":\"" + url + "\"}";
@@ -320,7 +325,7 @@ String submitFileUrl(String url) {
   int httpCode = http.POST(payload);
   String response = "";
   Serial.println("HTTP Code: " + String(httpCode));
-  
+  //Serial.println(http.getString());
   if (httpCode == 200) {
     response = http.getString();
   } else {
@@ -353,18 +358,25 @@ String fetch(String url) {
 }
 
 String getResult(String code) {
- String url =  result_api + code;
- String result = "";
- 
- do {
-   result = fetch(url);
-   if (result != "0" && result != "ERROR") {
-     break;
-   }
-   delay(2000); // Wait 2 seconds before next poll
- } while (true);
- 
- return result;
+  String url = result_api + code;
+  String result = "";
+  
+  for (int attempt = 1; attempt <= 10; attempt++) {
+    Serial.println("Polling attempt " + String(attempt) + "/50");
+    
+    result = fetch(url);
+    if (result != "0" && result != "ERROR") {
+      Serial.println("Success after " + String(attempt) + " attempts");
+      return result;
+    }
+    
+    if (attempt < 10) { // Don't delay on the last attempt
+      delay(4000);
+    }
+  }
+  
+  Serial.println("Failed after 50 attempts");
+  return "ERROR";
 }
 
 // Display function (same as before)
@@ -471,11 +483,3 @@ void showLoading(String text)
   }
 }
 
-void blinkLED(int pin, int times) {
- for(int i = 0; i < times; i++) {
-   digitalWrite(pin, HIGH);
-   delay(200);
-   digitalWrite(pin, LOW);
-   delay(200);
- }
-}
